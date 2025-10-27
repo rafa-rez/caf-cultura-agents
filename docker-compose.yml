@@ -1,0 +1,48 @@
+# /rag-cafe/docker-compose.yml
+version: '3.8'
+
+services:
+  # D4: Message Broker (RabbitMQ)
+  rabbitmq:
+    image: "rabbitmq:3.12-management"
+    container_name: rag_broker
+    ports:
+      - "5672:5672"  # Porta de comunicação (Pika)
+      - "15672:15672" # Interface Web de Gerenciamento
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # P1: API Gateway (FastAPI)
+  api_gateway:
+    build: ./api_gateway
+    container_name: rag_gateway_p1
+    ports:
+      - "8000:8000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - BROKER_HOST=rabbitmq
+
+  # P2: Agente Classificador (Worker)
+  agente_classificador:
+    build: ./agente_classificador
+    container_name: rag_classificador_p2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - BROKER_HOST=rabbitmq
+
+  # P3: Agente Gerador RAG (Worker)
+  agente_rag:
+    build: ./agente_rag
+    container_name: rag_gerador_p3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - BROKER_HOST=rabbitmq

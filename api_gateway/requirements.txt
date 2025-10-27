@@ -1,4 +1,4 @@
 # /api_gateway/requirements.txt
 fastapi
 uvicorn
-httpx
+pika
