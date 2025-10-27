@@ -1,0 +1,3 @@
+# /agente_classificador/requirements.txt
+fastapi
+uvicorn
