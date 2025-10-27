@@ -1,0 +1,6 @@
+# /agente_rag/requirements.txt
+pika
+transformers
+torch
+sentence-transformers
+chromadb
