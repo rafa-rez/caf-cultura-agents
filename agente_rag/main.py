@@ -5,6 +5,11 @@ import json
 import sys
 import os
 
+host_broker = os.environ.get('BROKER_HOST', 'localhost')
+broker_user = os.environ.get('BROKER_USER', 'guest')
+broker_pass = os.environ.get('BROKER_PASS', 'guest')
+credenciais = pika.PlainCredentials(broker_user, broker_pass)
+
 # --- SIMULAÇÃO DA LÓGICA RAG (D1 e D2) ---
 # (A mesma do Passo 4.3)
 def simular_carregamento_banco_vetorial(intencao: str, entidades: list[str]) -> str:
@@ -38,7 +43,7 @@ def main():
     while True: # Loop de reconexão
         try:
             connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=host_broker, port=5672)
+                pika.ConnectionParameters(host=host_broker, port=5672, credentials=credenciais)
             )
             channel = connection.channel()
 

@@ -1,48 +1,54 @@
-# /rag-cafe/docker-compose.yml
-version: '3.8'
-
+# /docker-compose.yml
 services:
   # D4: Message Broker (RabbitMQ)
   rabbitmq:
     image: "rabbitmq:3.12-management"
     container_name: rag_broker
     ports:
-      - "5672:5672"  # Porta de comunicação (Pika)
-      - "15672:15672" # Interface Web de Gerenciamento
+      - "5672:5672"
+      - "15672:15672"
+    # --- ADICIONAR ESTAS LINHAS ---
+    environment:
+      - RABBITMQ_DEFAULT_USER=rag_user
+      - RABBITMQ_DEFAULT_PASS=rag_pass_seguro_123
+    # --- FIM DA ADIÇÃO ---
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      # ... (resto do arquivo)
 
   # P1: API Gateway (FastAPI)
   api_gateway:
     build: ./api_gateway
-    container_name: rag_gateway_p1
-    ports:
-      - "8000:8000"
+    container_name: rag_gateway_p1 # Ou o nome que você usou
+    ports: # <--- Verifique esta seção
+      - "8000:8000" # <--- Esta linha está presente e indentada corretamente?
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
       - BROKER_HOST=rabbitmq
+      - BROKER_USER=rag_user
+      - BROKER_PASS=rag_pass_seguro_123
+      # --- FIM DA ADIÇÃO ---
 
   # P2: Agente Classificador (Worker)
   agente_classificador:
     build: ./agente_classificador
-    container_name: rag_classificador_p2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+    # ...
     environment:
       - BROKER_HOST=rabbitmq
+      # --- ADICIONAR ESTAS LINHAS ---
+      - BROKER_USER=rag_user
+      - BROKER_PASS=rag_pass_seguro_123
+      # --- FIM DA ADIÇÃO ---
 
   # P3: Agente Gerador RAG (Worker)
   agente_rag:
     build: ./agente_rag
-    container_name: rag_gerador_p3
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+    # ...
     environment:
       - BROKER_HOST=rabbitmq
+      # --- ADICIONAR ESTAS LINHAS ---
+      - BROKER_USER=rag_user
+      - BROKER_PASS=rag_pass_seguro_123
+      # --- FIM DA ADIÇÃO ---

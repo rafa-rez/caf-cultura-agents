@@ -1,4 +1,4 @@
-# /agente_classificador/Dockerfile
+# /api_gateway/Dockerfile
 
 # 1. Imagem Base (leve)
 FROM python:3.11-slim
@@ -7,15 +7,15 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. Copia e instala as dependências
-# (Separado para aproveitar o cache do Docker)
+# (fastapi, uvicorn, pika)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. Copia o código da aplicação
 COPY main.py .
 
-# 5. Expõe a porta que o Uvicorn usará (diferente do Gateway)
-EXPOSE 8001
+# 5. Expõe a porta que o Uvicorn usará (porta padrão 8000)
+EXPOSE 8000
 
 # --- ADICIONAR ESTAS LINHAS ---
 # 7. (Mitigação T-07) Cria um usuário não-root
@@ -33,4 +33,4 @@ CMD [...]
 
 # 6. Comando para rodar a aplicação
 # host="0.0.0.0" é crucial para expor fora do container
-CMD ["python", "-u", "main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

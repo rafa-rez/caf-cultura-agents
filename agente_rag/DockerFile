@@ -17,9 +17,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 5. Copia o código da aplicação
 COPY main.py .
 
+# --- ADICIONAR ESTAS LINHAS ---
+# 7. (Mitigação T-07) Cria um usuário não-root
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
+
+# Define o proprietário dos arquivos da aplicação
+RUN chown -R appuser:appgroup /app
+
+# Muda para o usuário não-root
+USER appuser
+# --- FIM DA ADIÇÃO ---
+
+# Linha final (já existe)
+CMD [...]
+
 # (NOTA: Em um projeto real, aqui teríamos um passo para BAIXAR 
 # os modelos (D1 e D2) para dentro da imagem, para que o container
 # inicie rápido. Estamos pulando isso e simulando no código.)
 
 # 6. Comando para rodar o worker
-CMD ["python", "main.py"]
+CMD ["python", "-u", "main.py"]

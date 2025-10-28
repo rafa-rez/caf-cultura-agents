@@ -7,6 +7,16 @@ import os
 from fastapi import FastAPI, HTTPException, status, Request
 from pydantic import BaseModel
 from contextlib import AbstractContextManager
+from fastapi.security import APIKeyHeader
+from fastapi import Depends
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+
+BROKER_USER = os.environ.get('BROKER_USER', 'guest')
+BROKER_PASS = os.environ.get('BROKER_PASS', 'guest')
+CREDENCIAIS = pika.PlainCredentials(BROKER_USER, BROKER_PASS)
 
 # --- Modelos de Dados (Validação T-02) ---
 
@@ -23,6 +33,25 @@ app = FastAPI(
     title="RAG-Café API Gateway (P1)",
     description="Ponto de entrada do sistema. Comunicação A2A via RabbitMQ."
 )
+
+# Configuração do Rate Limiter (Mitigação T-01)
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Chave de API (Mitigação T-04)
+# Em produção, isso viria de uma variável de ambiente
+API_KEY_VALIDA = "cafe_seguro_UFLA_2025" 
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def validar_api_key(key: str = Depends(api_key_header)):
+    """ Validador de dependência para a API Key """
+    if not key or key != API_KEY_VALIDA:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Chave de API (X-API-Key) inválida ou ausente."
+        )
+    return True
 
 # --- Gerenciador de Conexão RabbitMQ (Boa Prática) ---
 # Vamos manter uma conexão/canal por requisição para segurança em threads
@@ -44,7 +73,7 @@ class RabbitMQClient(AbstractContextManager):
     def __enter__(self):
         try:
             self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=BROKER_HOST, port=5672)
+                pika.ConnectionParameters(host=BROKER_HOST, port=5672, credentials=CREDENCIAIS)
             )
             self.channel = self.connection.channel()
             
@@ -123,7 +152,8 @@ async def root():
 
 
 @app.post("/perguntar", response_model=RespostaAgente, status_code=status.HTTP_200_OK)
-async def fazer_pergunta(pergunta: PerguntaUsuario, request: Request):
+@limiter.limit("10/minute")
+async def fazer_pergunta(pergunta: PerguntaUsuario, request: Request, key_valida: bool = Depends(validar_api_key)):
     """
     Recebe a pergunta, envia para o fluxo A2A (P2->P3) via RabbitMQ 
     e aguarda a resposta (Padrão RPC).
